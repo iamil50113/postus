@@ -1,12 +1,18 @@
 package inmemory
 
-import inmemorymodel "postus/internal/repository/inMemory/model"
+import (
+	inmemorymodel "postus/internal/repository/inMemory/model"
+	"sync"
+)
 
 type Storage struct {
 	posts           []*inmemorymodel.Post
 	comments        []*inmemorymodel.Comment
 	users           []string
 	paginationLimit int
+	muPosts         sync.Mutex
+	muComments      sync.Mutex
+	muUsers         sync.Mutex
 }
 
 func New() (*Storage, error) {

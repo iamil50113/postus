@@ -7,6 +7,9 @@ import (
 )
 
 func (s *Storage) User(ctx context.Context, uid int64) (*model.User, error) {
+	s.muUsers.Lock()
+	defer s.muUsers.Unlock()
+
 	if uid >= int64(len(s.users)) {
 		return nil, repository.ErrorUserNotFound
 	}
