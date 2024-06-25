@@ -9,7 +9,6 @@ import (
 )
 
 func (s *Storage) NewPost(ctx context.Context, userID int64, title string, body string, commentPermission bool, publicationTime time.Time) (int64, error) {
-	const op = "repository.internalStorage.post.NewPost"
 	id := int64(len(s.posts))
 
 	s.posts = append(s.posts, &inmemorymodel.Post{
@@ -24,7 +23,6 @@ func (s *Storage) NewPost(ctx context.Context, userID int64, title string, body 
 }
 
 func (s *Storage) Posts(ctx context.Context) ([]*model.Post, error) {
-	const op = "repository.internalStorage.post.Posts"
 	posts := make([]*model.Post, 0, 10)
 	for id, v := range s.posts {
 		posts = append(posts, &model.Post{
@@ -39,7 +37,6 @@ func (s *Storage) Posts(ctx context.Context) ([]*model.Post, error) {
 }
 
 func (s *Storage) PostsForUserID(ctx context.Context, uid int64) ([]*model.Post, error) {
-	const op = "repository.internalStorage.post.PostsForUserID"
 	posts := make([]*model.Post, 0, 10)
 	for id, v := range s.posts {
 		if v.UserID == uid {
@@ -56,7 +53,6 @@ func (s *Storage) PostsForUserID(ctx context.Context, uid int64) ([]*model.Post,
 }
 
 func (s *Storage) Post(ctx context.Context, id int64) (*model.Post, error) {
-	const op = "repository.internalStorage.post.Post"
 	if id >= int64(len(s.posts)) {
 		return nil, repository.ErrorPostNotFound
 	}

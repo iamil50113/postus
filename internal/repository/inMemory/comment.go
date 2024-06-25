@@ -9,7 +9,6 @@ import (
 )
 
 func (s *Storage) ChildExist(ctx context.Context, commentID int64) (bool, error) {
-	const op = "repository.internalStorage.comment.ChildExist"
 	for _, v := range s.comments {
 		if v.ParentCommentID == commentID {
 			return true, nil
@@ -19,7 +18,6 @@ func (s *Storage) ChildExist(ctx context.Context, commentID int64) (bool, error)
 }
 
 func (s *Storage) ChildCommentsForParentCommentIDWithCursor(ctx context.Context, id int64, cursor int64, limit int) (*model.Comments, error) {
-	const op = "repository.internalStorage.comment.GetChildCommentsForParentCommentIDWithCursor"
 	comms := []model.Comment{}
 	for i := cursor; i < int64(len(s.comments)) && len(comms) < s.paginationLimit+1; i++ {
 		if s.comments[i].ParentCommentID == id {
@@ -40,7 +38,6 @@ func (s *Storage) ChildCommentsForParentCommentIDWithCursor(ctx context.Context,
 }
 
 func (s *Storage) CommentsForPostIDWithCursor(ctx context.Context, id int64, cursor int64, limit int) (*model.Comments, error) {
-	const op = "repository.internalStorage.comment.GetCommentsForPostIDWithCursor"
 	comms := []model.Comment{}
 	for i := cursor; i < int64(len(s.comments)) && len(comms) < s.paginationLimit+1; i++ {
 		if s.comments[i].PostID == id && s.comments[i].ParentCommentID == 0 {
@@ -62,7 +59,6 @@ func (s *Storage) CommentsForPostIDWithCursor(ctx context.Context, id int64, cur
 }
 
 func (s *Storage) NewComment(ctx context.Context, uid int64, postID int64, body string, publicationTime time.Time) (int64, error) {
-	const op = "repository.internalStorage.comment.NewComment"
 	id := int64(len(s.comments))
 
 	s.comments = append(s.comments, &inmemorymodel.Comment{
@@ -76,7 +72,6 @@ func (s *Storage) NewComment(ctx context.Context, uid int64, postID int64, body 
 }
 
 func (s *Storage) NewChildComment(ctx context.Context, uid int64, postID int64, body string, parentCommentID int64, publicationTime time.Time) (int64, error) {
-	const op = "repository.internalStorage.comment.NewComment"
 	id := int64(len(s.comments))
 
 	s.comments = append(s.comments, &inmemorymodel.Comment{
@@ -90,7 +85,6 @@ func (s *Storage) NewChildComment(ctx context.Context, uid int64, postID int64, 
 }
 
 func (s *Storage) Comment(ctx context.Context, id int64) (*model.Comment, error) {
-	const op = "repository.internalStorage.comment.Comment"
 	if id >= int64(len(s.comments)) {
 		return nil, repository.ErrorCommentNotFound
 	}

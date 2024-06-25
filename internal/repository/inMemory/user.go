@@ -7,7 +7,6 @@ import (
 )
 
 func (s *Storage) User(ctx context.Context, uid int64) (*model.User, error) {
-	const op = "repository.internalStorage.user.User"
 	if uid >= int64(len(s.users)) {
 		return nil, repository.ErrorUserNotFound
 	}
