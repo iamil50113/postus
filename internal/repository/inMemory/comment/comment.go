@@ -33,8 +33,14 @@ func (s *DataStore) ChildExist(ctx context.Context, commentID int64) (bool, erro
 	defer s.RUnlock()
 
 	for _, v := range s.storage {
-		if v.ParentCommentID == commentID {
-			return true, nil
+		select {
+		case <-ctx.Done():
+			return false, ctx.Err()
+
+		default:
+			if v.ParentCommentID == commentID {
+				return true, nil
+			}
 		}
 	}
 
@@ -48,21 +54,27 @@ func (s *DataStore) ChildCommentsForParentCommentIDWithCursor(ctx context.Contex
 	defer s.RUnlock()
 
 	for i := cursor; i < int64(len(s.storage)) && len(comms) < s.paginationLimit+1; i++ {
-		if s.storage[i].ParentCommentID == id {
-			user, err := s.usrProvider.User(ctx, s.storage[i].UserID)
-			if err != nil {
-				continue
-			}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
 
-			comms = append(comms, model.Comment{
-				ID:   i,
-				Body: s.storage[i].Body,
-				User: model.User{
-					ID:   user.ID,
-					Name: user.Name},
-				PostID:          s.storage[i].PostID,
-				PublicationTime: s.storage[i].PublicationTime,
-			})
+		default:
+			if s.storage[i].ParentCommentID == id {
+				user, err := s.usrProvider.User(ctx, s.storage[i].UserID)
+				if err != nil {
+					continue
+				}
+
+				comms = append(comms, model.Comment{
+					ID:   i,
+					Body: s.storage[i].Body,
+					User: model.User{
+						ID:   user.ID,
+						Name: user.Name},
+					PostID:          s.storage[i].PostID,
+					PublicationTime: s.storage[i].PublicationTime,
+				})
+			}
 		}
 	}
 	if len(comms) > limit {
@@ -79,19 +91,25 @@ func (s *DataStore) CommentsForPostIDWithCursor(ctx context.Context, id int64, c
 	defer s.RUnlock()
 
 	for i := cursor; i < int64(len(s.storage)) && len(comms) < s.paginationLimit+1; i++ {
-		if s.storage[i].PostID == id && s.storage[i].ParentCommentID == 0 {
-			user, err := s.usrProvider.User(ctx, s.storage[i].UserID)
-			if err != nil {
-				continue
-			}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
 
-			comms = append(comms, model.Comment{
-				ID:              int64(i),
-				Body:            s.storage[i].Body,
-				User:            model.User{ID: user.ID, Name: user.Name},
-				PostID:          s.storage[i].PostID,
-				PublicationTime: s.storage[i].PublicationTime,
-			})
+		default:
+			if s.storage[i].PostID == id && s.storage[i].ParentCommentID == 0 {
+				user, err := s.usrProvider.User(ctx, s.storage[i].UserID)
+				if err != nil {
+					continue
+				}
+
+				comms = append(comms, model.Comment{
+					ID:              int64(i),
+					Body:            s.storage[i].Body,
+					User:            model.User{ID: user.ID, Name: user.Name},
+					PostID:          s.storage[i].PostID,
+					PublicationTime: s.storage[i].PublicationTime,
+				})
+			}
 		}
 	}
 	if len(comms) > limit {

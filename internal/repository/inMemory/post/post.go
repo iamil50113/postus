@@ -50,21 +50,27 @@ func (s *DataStore) Posts(ctx context.Context) ([]*model.Post, error) {
 	defer s.RUnlock()
 
 	for id, v := range s.storage {
-		user, err := s.usrProvider.User(ctx, v.UserID)
-		if err != nil {
-			continue
-		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
 
-		posts = append(posts, &model.Post{
-			ID:    int64(id),
-			Title: v.Title,
-			Body:  v.Body,
-			User: model.User{
-				ID:   user.ID,
-				Name: user.Name,
-			},
-			PublicationTime:   v.PublicationTime,
-			CommentPermission: v.CommentPermission})
+		default:
+			user, err := s.usrProvider.User(ctx, v.UserID)
+			if err != nil {
+				continue
+			}
+
+			posts = append(posts, &model.Post{
+				ID:    int64(id),
+				Title: v.Title,
+				Body:  v.Body,
+				User: model.User{
+					ID:   user.ID,
+					Name: user.Name,
+				},
+				PublicationTime:   v.PublicationTime,
+				CommentPermission: v.CommentPermission})
+		}
 	}
 	return posts, nil
 }
@@ -76,21 +82,28 @@ func (s *DataStore) PostsForUserID(ctx context.Context, uid int64) ([]*model.Pos
 	defer s.RUnlock()
 
 	for id, v := range s.storage {
-		if v.UserID == uid {
-			user, err := s.usrProvider.User(ctx, v.UserID)
-			if err != nil {
-				continue
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+
+		default:
+
+			if v.UserID == uid {
+				user, err := s.usrProvider.User(ctx, v.UserID)
+				if err != nil {
+					continue
+				}
+				posts = append(posts, &model.Post{
+					ID:    int64(id),
+					Title: v.Title,
+					Body:  v.Body,
+					User: model.User{
+						ID:   user.ID,
+						Name: user.Name,
+					},
+					PublicationTime:   v.PublicationTime,
+					CommentPermission: v.CommentPermission})
 			}
-			posts = append(posts, &model.Post{
-				ID:    int64(id),
-				Title: v.Title,
-				Body:  v.Body,
-				User: model.User{
-					ID:   user.ID,
-					Name: user.Name,
-				},
-				PublicationTime:   v.PublicationTime,
-				CommentPermission: v.CommentPermission})
 		}
 	}
 	return posts, nil
