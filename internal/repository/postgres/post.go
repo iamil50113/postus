@@ -20,7 +20,7 @@ VALUES (@title, @body, @userID, @publicationTime, @commentPermission) RETURNING 
 		"title":             title,
 		"body":              body,
 		"userID":            userID,
-		"publicationTime":   publicationTime,
+		"publicationTime":   time.Now(),
 		"commentPermission": commentPermission,
 	}
 

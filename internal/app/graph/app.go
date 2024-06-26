@@ -13,7 +13,7 @@ import (
 	"os/signal"
 	"postus/internal/config"
 	graph "postus/internal/controller/graphql"
-	inmemory "postus/internal/repository/inMemory"
+	inmemory "postus/internal/repository/inMemory/post"
 	"postus/internal/repository/postgres"
 	"postus/internal/service/comment"
 	"postus/internal/service/post"
