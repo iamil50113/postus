@@ -7,16 +7,16 @@ import (
 )
 
 type Storage struct {
-	posts    *inmemoryPost.DataStore
-	comments *inmemoryComment.DataStore
-	users    *inmemoryUser.DataStore
+	Posts    *inmemoryPost.DataStore
+	Comments *inmemoryComment.DataStore
+	Users    *inmemoryUser.DataStore
 }
 
-func New(commentsPaginationLimit int) (*Storage, error) {
+func New() (*Storage, error) {
 	usersStorage := inmemoryUser.New()
 	return &Storage{
-		posts:    inmemoryPost.New(usersStorage),
-		comments: inmemoryComment.New(usersStorage, commentsPaginationLimit),
-		users:    usersStorage,
+		Posts:    inmemoryPost.New(usersStorage),
+		Comments: inmemoryComment.New(usersStorage),
+		Users:    usersStorage,
 	}, nil
 }

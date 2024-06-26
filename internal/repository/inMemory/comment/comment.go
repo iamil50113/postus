@@ -11,20 +11,18 @@ import (
 
 type DataStore struct {
 	sync.RWMutex
-	storage         []*inmemorymodel.Comment
-	paginationLimit int
-	usrProvider     UserProvider
+	storage     []*inmemorymodel.Comment
+	usrProvider UserProvider
 }
 
 type UserProvider interface {
 	User(ctx context.Context, uid int64) (*model.User, error)
 }
 
-func New(usrProvider UserProvider, paginationLimit int) *DataStore {
+func New(usrProvider UserProvider) *DataStore {
 	return &DataStore{
-		storage:         make([]*inmemorymodel.Comment, 10),
-		paginationLimit: paginationLimit,
-		usrProvider:     usrProvider,
+		storage:     make([]*inmemorymodel.Comment, 10),
+		usrProvider: usrProvider,
 	}
 }
 
@@ -53,7 +51,7 @@ func (s *DataStore) ChildCommentsForParentCommentIDWithCursor(ctx context.Contex
 	s.RLock()
 	defer s.RUnlock()
 
-	for i := cursor; i < int64(len(s.storage)) && len(comms) < s.paginationLimit+1; i++ {
+	for i := cursor; i < int64(len(s.storage)) && len(comms) < limit+1; i++ {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -90,7 +88,7 @@ func (s *DataStore) CommentsForPostIDWithCursor(ctx context.Context, id int64, c
 	s.RLock()
 	defer s.RUnlock()
 
-	for i := cursor; i < int64(len(s.storage)) && len(comms) < s.paginationLimit+1; i++ {
+	for i := cursor; i < int64(len(s.storage)) && len(comms) < limit+1; i++ {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()

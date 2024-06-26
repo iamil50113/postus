@@ -1,4 +1,4 @@
-env: "local"
+env: "prod"
 postus:
   comment_length_limit: 2000
   pagination_of_comments_limit: 5

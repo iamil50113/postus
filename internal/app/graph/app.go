@@ -13,7 +13,7 @@ import (
 	"os/signal"
 	"postus/internal/config"
 	graph "postus/internal/controller/graphql"
-	inmemory "postus/internal/repository/inMemory/post"
+	inmemory "postus/internal/repository/inMemory"
 	"postus/internal/repository/postgres"
 	"postus/internal/service/comment"
 	"postus/internal/service/post"
@@ -76,9 +76,9 @@ func (a *App) Run(
 			panic("inMemory storage initialization error")
 		}
 
-		postService = post.New(a.log, st, st, st)
-		commentService = comment.New(a.log, postusCfg.CommentLenLimit, postusCfg.PaginationCommentsLimit, st, st, st, st)
-		userService = user.New(a.log, st)
+		postService = post.New(a.log, st.Posts, st.Posts, st.Users)
+		commentService = comment.New(a.log, postusCfg.CommentLenLimit, postusCfg.PaginationCommentsLimit, st.Comments, st.Comments, st.Posts, st.Users)
+		userService = user.New(a.log, st.Users)
 	}
 
 	graphResolver := graph.New(postService, commentService, userService, commentService.GetSubscriberService())
