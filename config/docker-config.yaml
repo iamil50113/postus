@@ -1,0 +1,15 @@
+env: "prod"
+postus:
+  comment_length_limit: 2000
+  pagination_of_comments_limit: 5
+  use_in_memory: true
+
+http_server:
+  port: 8080
+
+postgresql:
+  host: localhost
+  port: 5432
+  database_name: Test
+  username: postgres
+  password: 123

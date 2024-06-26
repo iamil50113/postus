@@ -34,8 +34,7 @@ type PostgresConfig struct {
 func MustLoad() *Config {
 	var configPath string
 
-	flag.StringVar(&configPath, "config", "config/local.yaml", "path to config file")
-	flag.Parse()
+	configPath = fetchConfigPath()
 
 	return MustLoadPath(configPath)
 }
@@ -53,4 +52,21 @@ func MustLoadPath(configPath string) *Config {
 	}
 
 	return &cfg
+}
+
+func fetchConfigPath() string {
+	var res string
+
+	flag.StringVar(&res, "config", "", "path to config file")
+	flag.Parse()
+
+	if res == "" {
+		res = os.Getenv("CONFIG_PATH")
+	}
+
+	if res == "" {
+		res = "config/local.yaml"
+	}
+
+	return res
 }
