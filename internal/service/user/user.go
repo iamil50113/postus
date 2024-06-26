@@ -2,9 +2,11 @@ package user
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"log/slog"
 	"postus/internal/domain/model"
+	"postus/internal/repository"
+	"postus/internal/service"
 )
 
 type User struct {
@@ -28,17 +30,25 @@ func New(
 func (u *User) User(ctx context.Context, uid int64) (*model.User, error) {
 	user, err := u.usrProvider.User(ctx, uid)
 	if err != nil {
-		return nil, err
-	}
-	if user == nil {
-		return nil, fmt.Errorf("Invalid user id")
+		if errors.Is(err, repository.ErrorUserNotFound) {
+			return nil, err
+		} else {
+			return nil, service.ErrorServer
+		}
 	}
 	return user, err
 }
 
-func (u *User) UserIsExists(ctx context.Context, uid int64) bool {
-	if user, err := u.usrProvider.User(ctx, uid); err != nil || user == nil {
-		return false
-	}
-	return true
-}
+//func (u *User) UserIsExists(ctx context.Context, uid int64) (bool, error) {
+//	if _, err := u.User(ctx, uid); err != nil {
+//		if err != nil {
+//			if errors.Is(err, repository.ErrorUserNotFound) {
+//				return false, nil
+//			} else {
+//				return false, err
+//			}
+//		}
+//	}
+//
+//	return true, nil
+//}
