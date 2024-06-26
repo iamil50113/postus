@@ -2,8 +2,11 @@ package post
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"postus/internal/domain/model"
+	"postus/internal/repository"
+	"postus/internal/service"
 	"time"
 )
 
@@ -42,30 +45,54 @@ func New(
 }
 
 func (p *Post) Posts(ctx context.Context) ([]*model.Post, error) {
-	return p.postProvider.Posts(ctx)
+	posts, err := p.postProvider.Posts(ctx)
+	if err != nil {
+		return nil, service.ErrorServer
+	}
+
+	return posts, nil
 }
 
 func (p *Post) PostsForUser(ctx context.Context, uid int64) ([]*model.Post, error) {
 	_, err := p.usrProvider.User(ctx, uid)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, repository.ErrorUserNotFound) {
+			return nil, err
+		} else {
+			return nil, service.ErrorServer
+		}
 	}
+
 	return p.postProvider.PostsForUserID(ctx, uid)
 }
 
 func (p *Post) Post(ctx context.Context, id int64) (*model.Post, error) {
 	post, err := p.postProvider.Post(ctx, id)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, repository.ErrorPostNotFound) {
+			return nil, err
+		} else {
+			return nil, service.ErrorServer
+		}
 	}
-	return post, err
+
+	return post, nil
 }
 
 func (p *Post) AddPost(ctx context.Context, userID int64, title string, body string, commentPermission bool) (int64, error) {
 	_, err := p.usrProvider.User(ctx, userID)
 	if err != nil {
-		return 0, err
+		if errors.Is(err, repository.ErrorUserNotFound) {
+			return 0, err
+		} else {
+			return 0, service.ErrorServer
+		}
 	}
 
-	return p.postSaver.NewPost(ctx, userID, title, body, commentPermission, time.Now())
+	id, err := p.postSaver.NewPost(ctx, userID, title, body, commentPermission, time.Now())
+	if err != nil {
+		return 0, service.ErrorServer
+	}
+
+	return id, nil
 }

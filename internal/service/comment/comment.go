@@ -2,9 +2,12 @@ package comment
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"postus/internal/domain/model"
+	"postus/internal/repository"
+	"postus/internal/service"
 	"time"
 )
 
@@ -64,18 +67,46 @@ func (c *Comment) GetSubscriberService() *Subscriber {
 }
 
 func (c *Comment) ChildExist(ctx context.Context, commentID int64) (bool, error) {
-	return c.commProvider.ChildExist(ctx, commentID)
+	flag, err := c.commProvider.ChildExist(ctx, commentID)
+	if err != nil {
+		return false, service.ErrorServer
+	}
+
+	return flag, nil
 }
 
 func (c *Comment) ChildComments(ctx context.Context, id int64, cursor int64) (*model.Comments, error) {
-	return c.commProvider.ChildCommentsForParentCommentIDWithCursor(ctx, id, cursor, c.paginationLimit)
+	if _, err := c.commProvider.Comment(ctx, id); err != nil {
+		if errors.Is(err, repository.ErrorCommentNotFound) {
+			return nil, err
+		} else {
+			return nil, service.ErrorServer
+		}
+	}
+
+	comments, err := c.commProvider.ChildCommentsForParentCommentIDWithCursor(ctx, id, cursor, c.paginationLimit)
+	if err != nil {
+		return nil, service.ErrorServer
+	}
+
+	return comments, nil
 }
 
 func (c *Comment) Comments(ctx context.Context, id int64, cursor int64) (*model.Comments, error) {
 	if _, err := c.postProvider.Post(ctx, id); err != nil {
-		return nil, err
+		if errors.Is(err, repository.ErrorPostNotFound) {
+			return nil, err
+		} else {
+			return nil, service.ErrorServer
+		}
 	}
-	return c.commProvider.CommentsForPostIDWithCursor(ctx, id, cursor, c.paginationLimit)
+
+	comments, err := c.commProvider.CommentsForPostIDWithCursor(ctx, id, cursor, c.paginationLimit)
+	if err != nil {
+		return nil, service.ErrorServer
+	}
+
+	return comments, nil
 }
 
 func (c *Comment) NewComment(ctx context.Context, uid int64, postID int64, body string, parentCommentID int64) (int64, error) {
@@ -85,12 +116,20 @@ func (c *Comment) NewComment(ctx context.Context, uid int64, postID int64, body 
 
 	user, err := c.usrProvider.User(ctx, uid)
 	if err != nil {
-		return 0, err
+		if errors.Is(err, repository.ErrorUserNotFound) {
+			return 0, err
+		} else {
+			return 0, service.ErrorServer
+		}
 	}
 
 	post, err := c.postProvider.Post(ctx, postID)
 	if err != nil {
-		return 0, err
+		if errors.Is(err, repository.ErrorPostNotFound) {
+			return 0, err
+		} else {
+			return 0, service.ErrorServer
+		}
 	}
 
 	if !post.CommentPermission {
@@ -99,24 +138,28 @@ func (c *Comment) NewComment(ctx context.Context, uid int64, postID int64, body 
 
 	publicationTime := time.Now()
 
-	var id int64
+	var newCommentID int64
 
 	if parentCommentID == 0 {
-		id, err = c.commSaver.NewComment(ctx, uid, postID, body, publicationTime)
+		newCommentID, err = c.commSaver.NewComment(ctx, uid, postID, body, publicationTime)
 		if err != nil {
-			return 0, err
+			return 0, service.ErrorServer
 		}
 	} else {
 		if _, err := c.commProvider.Comment(ctx, parentCommentID); err != nil {
-			return 0, err
+			if errors.Is(err, repository.ErrorCommentNotFound) {
+				return 0, err
+			} else {
+				return 0, service.ErrorServer
+			}
 		}
-		id, err = c.commSaver.NewChildComment(ctx, uid, postID, body, parentCommentID, publicationTime)
+		newCommentID, err = c.commSaver.NewChildComment(ctx, uid, postID, body, parentCommentID, publicationTime)
 		if err != nil {
-			return 0, err
+			return 0, service.ErrorServer
 		}
 	}
 
-	c.subscriber.NewPostAlert(&model.Comment{id, body, *user, postID, publicationTime})
+	c.subscriber.NewPostAlert(&model.Comment{newCommentID, body, *user, postID, publicationTime})
 
-	return id, nil
+	return newCommentID, nil
 }
