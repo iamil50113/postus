@@ -2,7 +2,7 @@ version: "3"
 volumes:
   postgres-data:
 services:
-  smallurl:
+  postus:
     image: postus
     networks:
       - default
