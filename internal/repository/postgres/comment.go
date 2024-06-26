@@ -138,15 +138,4 @@ func (s *Storage) Comment(ctx context.Context, id int64) (*model.Comment, error)
 		return nil, fmt.Errorf("%s: execute statement: %w", op, err)
 	}
 	return &c, nil
-
-	//var c *model.Comment
-	//for rows.Next() {
-	//	err := rows.Scan(&c.Body, &c.User.ID, &c.PostID, &c.PublicationTime)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	c.ID = id
-	//}
-	//
-	//return c, nil
 }

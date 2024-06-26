@@ -97,19 +97,4 @@ func (s *Storage) Post(ctx context.Context, id int64) (*model.Post, error) {
 		return nil, fmt.Errorf("%s: execute statement: %w", op, err)
 	}
 	return &p, nil
-
-	//rows, err := s.db.Query(ctx, query, id)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//defer rows.Close()
-	//
-	//var c *model.Post
-	//for rows.Next() {
-	//	err := rows.Scan(&c.Title, &c.Body, &c.PublicationTime, &c.CommentPermission, &c.User.ID, &c.User.Name)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//}
-	//return c, nil
 }

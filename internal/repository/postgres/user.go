@@ -22,21 +22,4 @@ func (s *Storage) User(ctx context.Context, uid int64) (*model.User, error) {
 		return nil, fmt.Errorf("%s: execute statement: %w", op, err)
 	}
 	return &u, nil
-
-	//rows, err := s.db.Query(ctx, query, uid)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//defer rows.Close()
-	//
-	//var c *model.User
-	//for rows.Next() {
-	//	err := rows.Scan(&c.Name)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	c.ID = uid
-	//}
-	//
-	//return c, nil
 }
