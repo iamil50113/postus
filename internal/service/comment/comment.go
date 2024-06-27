@@ -9,6 +9,7 @@ import (
 	"postus/internal/repository"
 	"postus/internal/service"
 	"time"
+	"unicode/utf8"
 )
 
 type Comment struct {
@@ -110,7 +111,7 @@ func (c *Comment) Comments(ctx context.Context, id int64, cursor int64) (*model.
 }
 
 func (c *Comment) NewComment(ctx context.Context, uid int64, postID int64, body string, parentCommentID int64) (int64, error) {
-	if len(body) > c.lenLimit {
+	if utf8.RuneCountInString(body) > c.lenLimit {
 		return 0, fmt.Errorf("Comment length exceeded")
 	}
 

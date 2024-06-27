@@ -1,25 +1,9 @@
-FROM golang:1.22 as build
-WORKDIR /app
+FROM golang:1.22-alpine
 
-RUN go install github.com/swaggo/swag/cmd/swag@latest
+WORKDIR /usr/local/src
 
-COPY . .
+RUN apk --no-cache add bash gcc gettext
 
-RUN make swag-gen
-RUN make build
+COPY ["app/go.mod", "app/go.sum", "./"]
 
-FROM golang:1.22 as production
-
-WORKDIR /app
-
-EXPOSE 8080
-
-COPY --from=build /app/server .
-
-RUN mkdir app-log
-
-RUN chmod 777 app-log
-
-ENV CONFIG_PATH /config.yaml
-
-ENTRYPOINT /app/server --config=$CONFIG_PATH
+RUN go mod download

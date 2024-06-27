@@ -18,6 +18,10 @@ func New() *DataStore {
 	users = append(users, "egor")
 	users = append(users, "alex")
 
+	for k, v := range users {
+		println("key: ", k, ", value: ", v)
+	}
+
 	return &DataStore{
 		storage: users,
 	}
@@ -26,7 +30,10 @@ func New() *DataStore {
 func (s *DataStore) User(ctx context.Context, uid int64) (*model.User, error) {
 	s.RLock()
 	defer s.RUnlock()
+	return s.user(ctx, uid)
+}
 
+func (s *DataStore) user(ctx context.Context, uid int64) (*model.User, error) {
 	if uid >= int64(len(s.storage)) {
 		return nil, repository.ErrorUserNotFound
 	}

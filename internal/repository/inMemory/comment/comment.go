@@ -21,7 +21,7 @@ type UserProvider interface {
 
 func New(usrProvider UserProvider) *DataStore {
 	return &DataStore{
-		storage:     make([]*inmemorymodel.Comment, 10),
+		storage:     make([]*inmemorymodel.Comment, 1, 10),
 		usrProvider: usrProvider,
 	}
 }
@@ -29,7 +29,40 @@ func New(usrProvider UserProvider) *DataStore {
 func (s *DataStore) ChildExist(ctx context.Context, commentID int64) (bool, error) {
 	s.RLock()
 	defer s.RUnlock()
+	return s.childExist(ctx, commentID)
+}
 
+func (s *DataStore) ChildCommentsForParentCommentIDWithCursor(ctx context.Context, id int64, cursor int64, limit int) (*model.Comments, error) {
+	s.RLock()
+	defer s.RUnlock()
+	return s.childCommentsForParentCommentIDWithCursor(ctx, id, cursor, limit)
+}
+
+func (s *DataStore) CommentsForPostIDWithCursor(ctx context.Context, id int64, cursor int64, limit int) (*model.Comments, error) {
+	s.RLock()
+	defer s.RUnlock()
+	return s.commentsForPostIDWithCursor(ctx, id, cursor, limit)
+}
+
+func (s *DataStore) NewComment(ctx context.Context, uid int64, postID int64, body string, publicationTime time.Time) (int64, error) {
+	s.Lock()
+	defer s.Unlock()
+	return s.newComment(ctx, uid, postID, body, publicationTime)
+}
+
+func (s *DataStore) NewChildComment(ctx context.Context, uid int64, postID int64, body string, parentCommentID int64, publicationTime time.Time) (int64, error) {
+	s.Lock()
+	defer s.Unlock()
+	return s.newChildComment(ctx, uid, postID, body, parentCommentID, publicationTime)
+}
+
+func (s *DataStore) Comment(ctx context.Context, id int64) (*model.Comment, error) {
+	s.RLock()
+	defer s.RUnlock()
+	return s.comment(ctx, id)
+}
+
+func (s *DataStore) childExist(ctx context.Context, commentID int64) (bool, error) {
 	for _, v := range s.storage {
 		select {
 		case <-ctx.Done():
@@ -45,11 +78,8 @@ func (s *DataStore) ChildExist(ctx context.Context, commentID int64) (bool, erro
 	return false, nil
 }
 
-func (s *DataStore) ChildCommentsForParentCommentIDWithCursor(ctx context.Context, id int64, cursor int64, limit int) (*model.Comments, error) {
+func (s *DataStore) childCommentsForParentCommentIDWithCursor(ctx context.Context, id int64, cursor int64, limit int) (*model.Comments, error) {
 	comms := []model.Comment{}
-
-	s.RLock()
-	defer s.RUnlock()
 
 	for i := cursor; i < int64(len(s.storage)) && len(comms) < limit+1; i++ {
 		select {
@@ -82,11 +112,8 @@ func (s *DataStore) ChildCommentsForParentCommentIDWithCursor(ctx context.Contex
 	return &model.Comments{Comments: comms, HiddenComments: false}, nil
 }
 
-func (s *DataStore) CommentsForPostIDWithCursor(ctx context.Context, id int64, cursor int64, limit int) (*model.Comments, error) {
+func (s *DataStore) commentsForPostIDWithCursor(ctx context.Context, id int64, cursor int64, limit int) (*model.Comments, error) {
 	comms := []model.Comment{}
-
-	s.RLock()
-	defer s.RUnlock()
 
 	for i := cursor; i < int64(len(s.storage)) && len(comms) < limit+1; i++ {
 		select {
@@ -115,13 +142,9 @@ func (s *DataStore) CommentsForPostIDWithCursor(ctx context.Context, id int64, c
 	}
 
 	return &model.Comments{Comments: comms, HiddenComments: false}, nil
-
 }
 
-func (s *DataStore) NewComment(ctx context.Context, uid int64, postID int64, body string, publicationTime time.Time) (int64, error) {
-	s.Lock()
-	defer s.Unlock()
-
+func (s *DataStore) newComment(ctx context.Context, uid int64, postID int64, body string, publicationTime time.Time) (int64, error) {
 	id := int64(len(s.storage))
 
 	s.storage = append(s.storage, &inmemorymodel.Comment{
@@ -134,10 +157,7 @@ func (s *DataStore) NewComment(ctx context.Context, uid int64, postID int64, bod
 	return id, nil
 }
 
-func (s *DataStore) NewChildComment(ctx context.Context, uid int64, postID int64, body string, parentCommentID int64, publicationTime time.Time) (int64, error) {
-	s.Lock()
-	defer s.Unlock()
-
+func (s *DataStore) newChildComment(ctx context.Context, uid int64, postID int64, body string, parentCommentID int64, publicationTime time.Time) (int64, error) {
 	id := int64(len(s.storage))
 
 	s.storage = append(s.storage, &inmemorymodel.Comment{
@@ -150,10 +170,7 @@ func (s *DataStore) NewChildComment(ctx context.Context, uid int64, postID int64
 	return id, nil
 }
 
-func (s *DataStore) Comment(ctx context.Context, id int64) (*model.Comment, error) {
-	s.RLock()
-	defer s.RUnlock()
-
+func (s *DataStore) comment(ctx context.Context, id int64) (*model.Comment, error) {
 	if id >= int64(len(s.storage)) {
 		return nil, repository.ErrorCommentNotFound
 	}

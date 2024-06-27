@@ -21,7 +21,7 @@ type UserProvider interface {
 
 func New(usrProvider UserProvider) *DataStore {
 	return &DataStore{
-		storage:     make([]*inmemorymodel.Post, 10),
+		storage:     make([]*inmemorymodel.Post, 1, 10),
 		usrProvider: usrProvider,
 	}
 }
@@ -29,7 +29,28 @@ func New(usrProvider UserProvider) *DataStore {
 func (s *DataStore) NewPost(ctx context.Context, userID int64, title string, body string, commentPermission bool, publicationTime time.Time) (int64, error) {
 	s.Lock()
 	defer s.Unlock()
+	return s.newPost(ctx, userID, title, body, commentPermission, publicationTime)
+}
 
+func (s *DataStore) Posts(ctx context.Context) ([]*model.Post, error) {
+	s.RLock()
+	defer s.RUnlock()
+	return s.posts(ctx)
+}
+
+func (s *DataStore) PostsForUserID(ctx context.Context, uid int64) ([]*model.Post, error) {
+	s.RLock()
+	defer s.RUnlock()
+	return s.postsForUserID(ctx, uid)
+}
+
+func (s *DataStore) Post(ctx context.Context, id int64) (*model.Post, error) {
+	s.RLock()
+	defer s.RUnlock()
+	return s.post(ctx, id)
+}
+
+func (s *DataStore) newPost(ctx context.Context, userID int64, title string, body string, commentPermission bool, publicationTime time.Time) (int64, error) {
 	id := int64(len(s.storage))
 
 	s.storage = append(s.storage, &inmemorymodel.Post{
@@ -43,11 +64,8 @@ func (s *DataStore) NewPost(ctx context.Context, userID int64, title string, bod
 	return id, nil
 }
 
-func (s *DataStore) Posts(ctx context.Context) ([]*model.Post, error) {
+func (s *DataStore) posts(ctx context.Context) ([]*model.Post, error) {
 	posts := make([]*model.Post, 0, 10)
-
-	s.RLock()
-	defer s.RUnlock()
 
 	for id, v := range s.storage {
 		select {
@@ -75,11 +93,8 @@ func (s *DataStore) Posts(ctx context.Context) ([]*model.Post, error) {
 	return posts, nil
 }
 
-func (s *DataStore) PostsForUserID(ctx context.Context, uid int64) ([]*model.Post, error) {
+func (s *DataStore) postsForUserID(ctx context.Context, uid int64) ([]*model.Post, error) {
 	posts := make([]*model.Post, 0, 10)
-
-	s.RLock()
-	defer s.RUnlock()
 
 	for id, v := range s.storage {
 		select {
@@ -109,10 +124,7 @@ func (s *DataStore) PostsForUserID(ctx context.Context, uid int64) ([]*model.Pos
 	return posts, nil
 }
 
-func (s *DataStore) Post(ctx context.Context, id int64) (*model.Post, error) {
-	s.RLock()
-	defer s.RUnlock()
-
+func (s *DataStore) post(ctx context.Context, id int64) (*model.Post, error) {
 	if id >= int64(len(s.storage)) {
 		return nil, repository.ErrorPostNotFound
 	}
