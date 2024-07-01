@@ -2,7 +2,7 @@ env: "prod"
 postus:
   comment_length_limit: 2000
   pagination_of_comments_limit: 5
-  use_in_memory: true
+  use_in_memory: false
 
 http_server:
   port: 8080

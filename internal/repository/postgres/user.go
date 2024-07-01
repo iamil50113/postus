@@ -11,6 +11,7 @@ import (
 
 func (s *Storage) User(ctx context.Context, uid int64) (*model.User, error) {
 	const op = "repository.postgres.user.User"
+	println(op)
 	query := `SELECT name from users WHERE id = $1`
 
 	var u model.User

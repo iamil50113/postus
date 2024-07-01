@@ -4,61 +4,86 @@ import (
 	"context"
 	"postus/internal/domain/model"
 	"sync"
-	"time"
 )
 
-type Ch struct {
-	channel  chan *model.Comment
-	isClosed *bool
+//type Ch struct {
+//	channel  chan *model.Comment
+//	isClosed *bool
+//}
+
+type PostCommentsSubs struct {
+	sync.RWMutex
+	subs map[*chan *model.Comment]struct{}
 }
 
 type Subscriber struct {
-	subs map[int64][]Ch
-	sync.Mutex
+	sync.RWMutex
+	posts        map[int64]*PostCommentsSubs
+	postProvider PostProvider
 }
 
-func (s *Subscriber) NewPostAlert(comment *model.Comment) {
+func newSubscriber(postProvider PostProvider) *Subscriber {
+	return &Subscriber{
+		postProvider: postProvider,
+	}
+}
+
+func (s *Subscriber) NewCommentAlert(comment *model.Comment) {
 	go func() {
-		s.Mutex.Lock()
-		for i := 0; i < len(s.subs[comment.PostID]); i++ {
-			if !*s.subs[comment.PostID][i].isClosed {
-				s.subs[comment.PostID][i].channel <- comment
+		s.RLock()
+
+		if p, ok := s.posts[comment.PostID]; ok {
+			s.posts[comment.PostID].RLock()
+
+			for k, _ := range p.subs {
+				*k <- comment
 			}
+
+			s.posts[comment.PostID].RUnlock()
 		}
-		s.Mutex.Unlock()
+
+		s.RUnlock()
 	}()
 
 }
 
 func (s *Subscriber) NewSubscribe(ctx context.Context, postID int64) (<-chan *model.Comment, error) {
 	newCommentEvent := make(chan *model.Comment, 1)
-	closed := false
-	go func() {
-		// Handle deregistration of the channel here. Note the `defer`
-		defer func() {
-			close(newCommentEvent)
-			closed = true
-		}()
 
-		for {
-			time.Sleep(1 * time.Second)
+	s.Lock()
 
-			select {
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
+	p, ok := s.posts[postID]
+	if ok {
+		p.Lock()
 
-	s.Mutex.Lock()
+		p.subs[&newCommentEvent] = struct{}{}
 
-	if len(s.subs[postID]) == 0 {
-		s.subs[postID] = make([]Ch, 0, 1)
+		p.Unlock()
+
+	} else {
+
+		subs := make(map[*chan *model.Comment]struct{})
+		subs[&newCommentEvent] = struct{}{}
+
+		s.posts[postID] = &PostCommentsSubs{subs: subs}
 	}
+	s.Unlock()
 
-	s.subs[postID] = append(s.subs[postID], Ch{channel: newCommentEvent, isClosed: &closed})
+	go func() {
+		<-ctx.Done()
 
-	s.Mutex.Unlock()
+		s.RLock()
+
+		s.posts[postID].Lock()
+
+		delete(s.posts[postID].subs, &newCommentEvent)
+
+		s.posts[postID].Unlock()
+
+		s.RUnlock()
+
+		close(newCommentEvent)
+	}()
 
 	return newCommentEvent, nil
 }

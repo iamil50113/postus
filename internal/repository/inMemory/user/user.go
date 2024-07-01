@@ -18,10 +18,6 @@ func New() *DataStore {
 	users = append(users, "egor")
 	users = append(users, "alex")
 
-	for k, v := range users {
-		println("key: ", k, ", value: ", v)
-	}
-
 	return &DataStore{
 		storage: users,
 	}

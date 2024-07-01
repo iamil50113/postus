@@ -13,6 +13,8 @@ import (
 	"os/signal"
 	"postus/internal/config"
 	graph "postus/internal/controller/graphql"
+	"postus/internal/controller/graphql/loader/loader"
+	"postus/internal/controller/graphql/loader/loader2"
 	inmemory "postus/internal/repository/inMemory"
 	"postus/internal/repository/postgres"
 	"postus/internal/service/comment"
@@ -64,7 +66,7 @@ func (a *App) Run(
 
 		st, err := postgres.New(postgresPool)
 		if err != nil {
-			panic("error connecting to postgresql")
+			return fmt.Errorf("%w", err)
 		}
 
 		postService = post.New(a.log, st, st, st)
@@ -90,7 +92,7 @@ func (a *App) Run(
 
 	graphConfig := graph.Config{Resolvers: graphResolver}
 
-	countComplexity := func(childComplexity int) int {
+	countComplexity := func(childComplexity int, cursorID *int64, limit *int64) int {
 		return childComplexity / 1000
 	}
 	graphConfig.Complexity.Query.Posts = countComplexity
@@ -99,9 +101,20 @@ func (a *App) Run(
 
 	srv.Use(extension.FixedComplexityLimit(50))
 
+	timer := func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			startTime := time.Now()
+			h.ServeHTTP(w, r)
+			a.log.Info("время обработки запроса: " + time.Now().Sub(startTime).String())
+		})
+	}
+	serverWithTimer := timer(srv)
+	serverWithLoaders := loader.Middleware(commentService, serverWithTimer)
+	serverWithLoaders2 := loader2.Middleware2(commentService, serverWithLoaders)
+
 	mux := http.NewServeMux()
 	mux.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	mux.Handle("/query", srv)
+	mux.Handle("/query", serverWithLoaders2)
 
 	serv := &http.Server{
 		Addr:    ":" + port,

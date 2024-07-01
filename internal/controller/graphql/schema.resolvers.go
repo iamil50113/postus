@@ -7,27 +7,35 @@ package graph
 import (
 	"context"
 	"fmt"
+	"postus/internal/controller/graphql/loader/loader"
+	"postus/internal/controller/graphql/loader/loader2"
 	"postus/internal/domain/model"
 )
 
 // ChildCommentsExist is the resolver for the childCommentsExist field.
 func (r *commentResolver) ChildCommentsExist(ctx context.Context, obj *model.Comment) (bool, error) {
-	return r.commService.ChildExist(ctx, obj.ID)
+	return loader.GetChildCommentExists(ctx, obj.ID, obj.PostID)
 }
 
 // ChildComments is the resolver for the childComments field.
 func (r *commentResolver) ChildComments(ctx context.Context, obj *model.Comment) (*model.Comments, error) {
-	return r.commService.ChildComments(ctx, obj.ID, 0)
+	return loader2.GetFirstChildComments(ctx, obj.ID)
 }
 
 // AddPost is the resolver for the addPost field.
-func (r *mutationResolver) AddPost(ctx context.Context, userID int64, title string, body string, commentPermission bool) (int64, error) {
-	return r.postService.AddPost(ctx, userID, title, body, commentPermission)
+func (r *mutationResolver) AddPost(ctx context.Context, userID int64, title string, body string, commentPermission *bool) (int64, error) {
+	if commentPermission != nil {
+		return r.postService.AddPost(ctx, userID, title, body, *commentPermission)
+	}
+	return r.postService.AddPost(ctx, userID, title, body, true)
 }
 
 // AddComment is the resolver for the addComment field.
-func (r *mutationResolver) AddComment(ctx context.Context, userID int64, postID int64, body string, parentCommentID int64) (int64, error) {
-	return r.commService.NewComment(ctx, userID, postID, body, parentCommentID)
+func (r *mutationResolver) AddComment(ctx context.Context, userID int64, postID *int64, body string, parentCommentID *int64) (int64, error) {
+	if postID != nil {
+		return r.commService.NewComment(ctx, userID, *postID, body, parentCommentID)
+	}
+	return 0, fmt.Errorf("invalid post id")
 }
 
 // Comments is the resolver for the comments field.
@@ -35,35 +43,51 @@ func (r *postResolver) Comments(ctx context.Context, obj *model.Post) (*model.Co
 	return r.commService.Comments(ctx, obj.ID, 0)
 }
 
-// Posts is the resolver for the posts field.
-func (r *queryResolver) Posts(ctx context.Context) ([]*model.Post, error) {
-	return r.postService.Posts(ctx)
-}
-
 // Post is the resolver for the post field.
-func (r *queryResolver) Post(ctx context.Context, id *int64) (*model.Post, error) {
-	if id == nil {
-		return nil, fmt.Errorf("id not specified")
-	}
-	return r.postService.Post(ctx, *id)
+func (r *queryResolver) Post(ctx context.Context, id int64) (*model.Post, error) {
+	return r.postService.Post(ctx, id)
 }
 
 // Comments is the resolver for the comments field.
-func (r *queryResolver) Comments(ctx context.Context, postID int64, cursorID int64) (*model.Comments, error) {
-	return r.commService.Comments(ctx, postID, cursorID)
-}
+func (r *queryResolver) Comments(ctx context.Context, postID *int64, parentCommentID *int64, cursorID *int64) (*model.Comments, error) {
+	if cursorID != nil {
+		if parentCommentID != nil {
+			return r.commService.ChildComments(ctx, *parentCommentID, *cursorID)
+		}
 
-// ChildComments is the resolver for the childComments field.
-func (r *queryResolver) ChildComments(ctx context.Context, commentID int64, cursorID int64) (*model.Comments, error) {
-	return r.commService.ChildComments(ctx, commentID, cursorID)
+		if postID != nil {
+			return r.commService.Comments(ctx, *postID, *cursorID)
+		}
+
+		return nil, ErrorInvalidRequest
+
+	}
+
+	if parentCommentID != nil {
+		return loader2.GetFirstChildComments(ctx, *parentCommentID)
+	}
+
+	if postID != nil {
+		return r.commService.Comments(ctx, *postID, 0)
+	}
+
+	return nil, ErrorInvalidRequest
+
 }
 
 // User is the resolver for the user field.
-func (r *queryResolver) User(ctx context.Context, id *int64) (*model.User, error) {
-	if id == nil {
-		return nil, fmt.Errorf("id not specified")
+func (r *queryResolver) User(ctx context.Context, id int64) (*model.User, error) {
+	return r.usrService.User(ctx, id)
+}
+
+// Posts is the resolver for the posts field.
+func (r *queryResolver) Posts(ctx context.Context, cursorID *int64, limit *int64) ([]*model.Post, error) {
+	if cursorID != nil {
+		return r.postService.Posts(ctx, *cursorID, limit)
 	}
-	return r.usrService.User(ctx, *id)
+
+	return r.postService.Posts(ctx, 0, limit)
+
 }
 
 // NewComments is the resolver for the newComments field.
@@ -74,6 +98,11 @@ func (r *subscriptionResolver) NewComments(ctx context.Context, postID int64) (<
 // Posts is the resolver for the posts field.
 func (r *userResolver) Posts(ctx context.Context, obj *model.User) ([]*model.Post, error) {
 	return r.postService.PostsForUser(ctx, obj.ID)
+}
+
+// Comments is the resolver for the comments field.
+func (r *userResolver) Comments(ctx context.Context, obj *model.User) (*model.Comments, error) {
+	return r.commService.CommentsForUser(ctx, obj.ID)
 }
 
 // Comment returns CommentResolver implementation.

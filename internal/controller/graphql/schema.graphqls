@@ -6,7 +6,8 @@ scalar Time
 type User {
   id: ID!
   name: String!
-  posts: [Post!]!
+  posts: [Post!]
+  comments: Comments
 }
 
 type Post {
@@ -16,11 +17,11 @@ type Post {
   user: User!
   publicationTime: Time!
   commentPermission: Boolean!
-  comments: Comments!
+  comments: Comments
 }
 
 type Comments {
-  comments: [Comment]
+  comments: [Comment!]!
   hiddenComments: Boolean!
 }
 
@@ -30,22 +31,21 @@ type Comment {
   user: User!
   publicationTime: Time!
   childCommentsExist: Boolean!
-  childComments: Comments!
+  childComments: Comments
 }
 
 type Query {
-  posts: [Post!]!
-  post(id: ID): Post
-  comments(postId: ID!, cursorID: ID!): Comments
-  childComments(commentId: ID!, cursorID: ID!): Comments
-  user(id: ID): User
+  post(id: ID!): Post!
+  comments(postId: ID, parentCommentId: ID, cursorID: ID, limit: Int): Comments
+  user(id: ID!): User!
+  posts(cursorID: ID, limit: Int): [Post!]
 }
 
 type Mutation {
-  addPost(userID: ID!, title: String!, body: String!, commentPermission: Boolean!) : ID!
-  addComment(userID: ID!, postID: ID!, body: String!, parentCommentID: ID) : ID!
+  addPost(userID: ID!, title: String!, body: String!, commentPermission: Boolean) : ID!
+  addComment(userID: ID!, postID: ID, body: String!, parentCommentID: ID) : ID!
 }
 
 type Subscription {
-  newComments(postID: ID!): Comment
+  newComments(postID: ID!): Comment!
 }

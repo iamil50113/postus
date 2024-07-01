@@ -44,7 +44,7 @@ func New(
 	}
 }
 
-func (p *Post) Posts(ctx context.Context) ([]*model.Post, error) {
+func (p *Post) Posts(ctx context.Context, cursorID int64, limit *int64) ([]*model.Post, error) {
 	posts, err := p.postProvider.Posts(ctx)
 	if err != nil {
 		return nil, service.ErrorServer
@@ -68,6 +68,7 @@ func (p *Post) PostsForUser(ctx context.Context, uid int64) ([]*model.Post, erro
 
 func (p *Post) Post(ctx context.Context, id int64) (*model.Post, error) {
 	post, err := p.postProvider.Post(ctx, id)
+
 	if err != nil {
 		if errors.Is(err, repository.ErrorPostNotFound) {
 			return nil, err

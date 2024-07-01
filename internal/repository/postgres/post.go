@@ -12,6 +12,7 @@ import (
 
 func (s *Storage) NewPost(ctx context.Context, userID int64, title string, body string, commentPermission bool, publicationTime time.Time) (int64, error) {
 	const op = "repository.postgres.post.NewPost"
+	println(op)
 
 	query := `INSERT INTO post (title, body, user_id, publication_time, comment_permission)
 VALUES (@title, @body, @userID, @publicationTime, @commentPermission) RETURNING id`
@@ -34,6 +35,7 @@ VALUES (@title, @body, @userID, @publicationTime, @commentPermission) RETURNING 
 
 func (s *Storage) Posts(ctx context.Context) ([]*model.Post, error) {
 	const op = "repository.postgres.post.Posts"
+	println(op)
 
 	query := `SELECT post.id, title, body, publication_time, comment_permission, user_id, name FROM post JOIN users ON post.user_id = users.id`
 	rows, err := s.db.Query(ctx, query)
@@ -57,6 +59,7 @@ func (s *Storage) Posts(ctx context.Context) ([]*model.Post, error) {
 
 func (s *Storage) PostsForUserID(ctx context.Context, uid int64) ([]*model.Post, error) {
 	const op = "repository.postgres.post.PostsForUserID"
+	println(op)
 
 	query := `SELECT post.id, title, body, name, publication_time, comment_permission
 				FROM post
@@ -85,7 +88,7 @@ func (s *Storage) PostsForUserID(ctx context.Context, uid int64) ([]*model.Post,
 
 func (s *Storage) Post(ctx context.Context, id int64) (*model.Post, error) {
 	const op = "repository.postgres.post.Post"
-
+	println(op)
 	query := `SELECT title, body, publication_time, comment_permission, user_id, name FROM post JOIN users ON post.user_id = users.id WHERE post.id = $1`
 
 	var p model.Post
@@ -96,5 +99,6 @@ func (s *Storage) Post(ctx context.Context, id int64) (*model.Post, error) {
 		}
 		return nil, fmt.Errorf("%s: execute statement: %w", op, err)
 	}
+	p.ID = id
 	return &p, nil
 }

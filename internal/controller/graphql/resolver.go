@@ -17,17 +17,17 @@ type Resolver struct {
 }
 
 type PostService interface {
-	Posts(ctx context.Context) ([]*model.Post, error)
+	Posts(ctx context.Context, cursorID int64, limit *int64) ([]*model.Post, error)
 	PostsForUser(ctx context.Context, uid int64) ([]*model.Post, error)
 	Post(ctx context.Context, id int64) (*model.Post, error)
 	AddPost(ctx context.Context, userID int64, title string, body string, commentPermission bool) (int64, error)
 }
 
 type CommentService interface {
-	ChildExist(ctx context.Context, commentID int64) (bool, error)
 	ChildComments(ctx context.Context, id int64, cursor int64) (*model.Comments, error)
 	Comments(ctx context.Context, id int64, cursor int64) (*model.Comments, error)
-	NewComment(ctx context.Context, uid int64, postID int64, body string, parentCommentID int64) (int64, error)
+	NewComment(ctx context.Context, uid int64, postID int64, body string, parentCommentID *int64) (int64, error)
+	CommentsForUser(ctx context.Context, uid int64) (*model.Comments, error)
 }
 
 type SubscriberService interface {

@@ -2,6 +2,7 @@ package inmemoryComment
 
 import (
 	"context"
+	"postus/internal/controller/graphql/loader/loader"
 	"postus/internal/domain/model"
 	"postus/internal/repository"
 	inmemorymodel "postus/internal/repository/inMemory/model"
@@ -26,10 +27,20 @@ func New(usrProvider UserProvider) *DataStore {
 	}
 }
 
-func (s *DataStore) ChildExist(ctx context.Context, commentID int64) (bool, error) {
+func (s *DataStore) MultiChildExist(ctx context.Context, commentIDs []*loader.ComentAndPostID, postID int64) ([]bool, []error, error) {
 	s.RLock()
 	defer s.RUnlock()
-	return s.childExist(ctx, commentID)
+	return s.multiChildExist(ctx, commentIDs, postID)
+}
+
+//func (s *DataStore) ChildExist(ctx context.Context, commentID int64) (bool, error) {
+//	s.RLock()
+//	defer s.RUnlock()
+//	return s.childExist(ctx, commentID)
+//}
+
+func (s *DataStore) MultiFirstChildComments(ctx context.Context, commentIDs []int64, limit int) ([]*model.Comments, []error, error) {
+	return nil, nil, nil
 }
 
 func (s *DataStore) ChildCommentsForParentCommentIDWithCursor(ctx context.Context, id int64, cursor int64, limit int) (*model.Comments, error) {
@@ -62,21 +73,43 @@ func (s *DataStore) Comment(ctx context.Context, id int64) (*model.Comment, erro
 	return s.comment(ctx, id)
 }
 
-func (s *DataStore) childExist(ctx context.Context, commentID int64) (bool, error) {
-	for _, v := range s.storage {
-		select {
-		case <-ctx.Done():
-			return false, ctx.Err()
+func (s *DataStore) multiChildExist(ctx context.Context, commentIDs []*loader.ComentAndPostID, postID int64) ([]bool, []error, error) {
+	exists := make([]bool, len(commentIDs), len(commentIDs))
 
-		default:
-			if v.ParentCommentID == commentID {
-				return true, nil
+commentIDs:
+	for i, d := range commentIDs {
+		for _, v := range s.storage {
+			select {
+			case <-ctx.Done():
+				return nil, nil, ctx.Err()
+
+			default:
+				if v.ParentCommentID == d.CommentID {
+					exists[i] = true
+					continue commentIDs
+				}
 			}
 		}
 	}
 
-	return false, nil
+	return exists, nil, nil
 }
+
+//func (s *DataStore) childExist(ctx context.Context, commentID int64) (bool, error) {
+//	for _, v := range s.storage {
+//		select {
+//		case <-ctx.Done():
+//			return false, ctx.Err()
+//
+//		default:
+//			if v.ParentCommentID == commentID {
+//				return true, nil
+//			}
+//		}
+//	}
+//
+//	return false, nil
+//}
 
 func (s *DataStore) childCommentsForParentCommentIDWithCursor(ctx context.Context, id int64, cursor int64, limit int) (*model.Comments, error) {
 	comms := []model.Comment{}
